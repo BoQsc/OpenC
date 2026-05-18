@@ -1,0 +1,126 @@
+{
+  "release": "Open C Core 0.1 Alpha",
+  "rules": [
+    {
+      "id": "OC-RULE-0001",
+      "title": "Self-contained alpha authority",
+      "kind": "project",
+      "normative": "Open C Core 0.1 Alpha is defined by its own public release artifacts.",
+      "tests": []
+    },
+    {
+      "id": "OC-RULE-0101",
+      "title": "Line and block comments",
+      "kind": "lexical",
+      "normative": "Line comments and block comments are skipped by lexing; unterminated block comments produce OC-LEX-002.",
+      "tests": []
+    },
+    {
+      "id": "OC-RULE-0102",
+      "title": "Unterminated string-like lexical sequence",
+      "kind": "lexical",
+      "normative": "A double quote not closed before line-feed or end of source produces OC-LEX-001.",
+      "tests": [
+        "T-LEX-001"
+      ]
+    },
+    {
+      "id": "OC-RULE-0201",
+      "title": "Fixed main entry point",
+      "kind": "static",
+      "normative": "A program must have the entry-point shape int main(void) block.",
+      "tests": [
+        "T-VALID-001",
+        "T-STA-003"
+      ]
+    },
+    {
+      "id": "OC-RULE-0301",
+      "title": "Declaration and default initialization",
+      "kind": "static-runtime",
+      "normative": "A local int declaration introduces a visible binding; absent initializer binds 0.",
+      "tests": [
+        "T-VALID-005"
+      ]
+    },
+    {
+      "id": "OC-RULE-0302",
+      "title": "Same-scope duplicate rejection",
+      "kind": "static",
+      "normative": "A name may not be declared twice in one block scope; violation produces OC-STA-001.",
+      "tests": [
+        "T-STA-001"
+      ]
+    },
+    {
+      "id": "OC-RULE-0303",
+      "title": "Unresolved local rejection",
+      "kind": "static",
+      "normative": "Every variable use and assignment target must resolve to a visible local variable; violation produces OC-STA-002.",
+      "tests": [
+        "T-STA-002"
+      ]
+    },
+    {
+      "id": "OC-RULE-0304",
+      "title": "Nested block shadowing",
+      "kind": "static-runtime",
+      "normative": "An inner block may shadow an outer local variable without changing the outer binding after the inner block ends.",
+      "tests": [
+        "T-VALID-006"
+      ]
+    },
+    {
+      "id": "OC-RULE-0401",
+      "title": "Expression precedence",
+      "kind": "runtime",
+      "normative": "Multiplicative operators bind tighter than additive operators; precedence then follows relational, equality, logical-and, logical-or.",
+      "tests": [
+        "T-VALID-002"
+      ]
+    },
+    {
+      "id": "OC-RULE-0402",
+      "title": "Short-circuit logical operators",
+      "kind": "runtime",
+      "normative": "&& and || short-circuit and yield 0 or 1.",
+      "tests": []
+    },
+    {
+      "id": "OC-RULE-0501",
+      "title": "If statement",
+      "kind": "runtime",
+      "normative": "if selects the then statement for nonzero condition and the else statement, if present, for zero condition.",
+      "tests": [
+        "T-VALID-003"
+      ]
+    },
+    {
+      "id": "OC-RULE-0502",
+      "title": "While statement",
+      "kind": "runtime",
+      "normative": "while repeats while its condition is nonzero.",
+      "tests": [
+        "T-VALID-004"
+      ]
+    },
+    {
+      "id": "OC-RULE-0601",
+      "title": "Division and remainder by zero trap",
+      "kind": "runtime-trap",
+      "normative": "Division or remainder by zero traps with OC-TRAP-001.",
+      "tests": [
+        "T-TRAP-001"
+      ]
+    },
+    {
+      "id": "OC-RULE-0701",
+      "title": "Syntax failure classification",
+      "kind": "syntax",
+      "normative": "Failure to match the alpha grammar produces OC-SYN-001.",
+      "tests": [
+        "T-SYN-001"
+      ]
+    }
+  ]
+}
