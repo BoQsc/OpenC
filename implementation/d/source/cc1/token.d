@@ -3,6 +3,7 @@ module cc1.token;
 enum TokenKind {
     word,
     integerLiteral,
+    floatLiteral,
     stringLiteral,
     symbol,
     eofToken
