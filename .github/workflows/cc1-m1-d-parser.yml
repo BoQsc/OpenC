@@ -1,0 +1,161 @@
+name: CC1 M1 D parser
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  parser-gate:
+    name: Compile D parser and execute CC1-M1
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Prepare evidence directory
+        run: mkdir -p build/evidence
+
+      - name: Install a recorded GNU D compiler
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          if apt-cache show gdc-13 >/dev/null 2>&1; then
+            sudo apt-get install -y gdc-13
+            compiler=gdc-13
+          else
+            sudo apt-get install -y gdc
+            compiler=gdc
+          fi
+          echo "D_COMPILER=$compiler" >> "$GITHUB_ENV"
+          "$compiler" --version | tee build/evidence/d-compiler-version.txt
+          dpkg-query -W | grep -E '^(gdc|libgphobos)' | sort \
+            | tee build/evidence/d-toolchain-packages.txt
+
+      - name: Record source and fixture integrity
+        shell: bash
+        run: |
+          set -euo pipefail
+          sha256sum \
+            implementation/d/source/main.d \
+            implementation/d/source/cc1/diagnostic.d \
+            implementation/d/source/cc1/token.d \
+            implementation/d/source/cc1/lexer.d \
+            implementation/d/source/cc1/parser.d \
+            implementation/gates/cc1_m1_fixtures.json \
+            | tee build/evidence/input-hashes.sha256
+
+      - name: Compile the multi-module D frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$D_COMPILER" \
+            -O0 -g -Wall \
+            -Iimplementation/d/source \
+            implementation/d/source/main.d \
+            implementation/d/source/cc1/diagnostic.d \
+            implementation/d/source/cc1/token.d \
+            implementation/d/source/cc1/lexer.d \
+            implementation/d/source/cc1/parser.d \
+            -o build/openc-cc1-parser \
+            2>&1 | tee build/evidence/compile.log
+          sha256sum build/openc-cc1-parser \
+            | tee build/evidence/parser-binary.sha256
+
+      - name: Record the toolchain and workflow context
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          import os
+          import platform
+          import subprocess
+          from pathlib import Path
+
+          compiler = os.environ["D_COMPILER"]
+          version = subprocess.check_output(
+              [compiler, "--version"], text=True, stderr=subprocess.STDOUT
+          ).splitlines()[0]
+          record = {
+              "schema": "openc.cc1.toolchain_record.v1",
+              "milestone": "CC1-M1-parser",
+              "implementation_language": "D",
+              "compiler_command": compiler,
+              "compiler_version": version,
+              "runner_os": platform.platform(),
+              "repository": os.environ.get("GITHUB_REPOSITORY", ""),
+              "commit": os.environ.get("GITHUB_SHA", ""),
+              "workflow": os.environ.get("GITHUB_WORKFLOW", ""),
+              "run_id": os.environ.get("GITHUB_RUN_ID", ""),
+              "run_attempt": os.environ.get("GITHUB_RUN_ATTEMPT", ""),
+          }
+          Path("build/evidence/toolchain-record.json").write_text(
+              json.dumps(record, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          PY
+
+      - name: Execute the 22-fixture parser gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          build/openc-cc1-parser \
+            implementation/gates/cc1_m1_fixtures.json \
+            build/evidence/cc1-m1-report.json \
+            2>&1 | tee build/evidence/gate-console.txt
+
+      - name: Verify the machine-readable result
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          report = json.loads(
+              Path("build/evidence/cc1-m1-report.json").read_text(encoding="utf-8")
+          )
+          summary = report["summary"]
+          assert report["milestone"] == "CC1-M1-parser"
+          assert report["implementation"]["language"] == "D"
+          assert summary == {
+              "failed": 0,
+              "infrastructure_failures": 0,
+              "passed": 22,
+              "total": 22,
+          }, summary
+          assert all(item["passed"] for item in report["results"])
+
+          lines = [
+              "# CC1-M1-parser execution result",
+              "",
+              "```text",
+              f"fixtures: {summary['total']}",
+              f"passed: {summary['passed']}",
+              f"failed: {summary['failed']}",
+              f"infrastructure failures: {summary['infrastructure_failures']}",
+              "implementation language: D",
+              "```",
+              "",
+              "This is parser-gate evidence only, not full Core conformance.",
+          ]
+          Path("build/evidence/CC1_M1_EXECUTION.md").write_text(
+              "\n".join(lines) + "\n", encoding="utf-8"
+          )
+          PY
+
+      - name: Upload parser, reports, and provenance
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: openc-cc1-m1-d-parser-${{ github.run_id }}-${{ github.run_attempt }}
+          if-no-files-found: error
+          retention-days: 30
+          path: |
+            build/openc-cc1-parser
+            build/evidence/**

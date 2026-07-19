@@ -1,0 +1,159 @@
+{
+  "schema": "openc.cc1.parser_gate.v1",
+  "milestone": "CC1-M1-parser",
+  "required_implementation_language": "D",
+  "fixture_count": 22,
+  "fixtures": [
+    {
+      "id": "valid/comments_preserve_tokens",
+      "source": "i32 main() { i32/* gap */value = 1; // line\n return value; }\n",
+      "expected_result": "accept",
+      "rules": ["OPENC-LEX-COMMENT-001"]
+    },
+    {
+      "id": "valid/first_program",
+      "source": "import system.io;\n\ni32 main() {\n    io.println(\"hello\");\n    return 0;\n}\n",
+      "expected_result": "accept",
+      "rules": ["OPENC-MODULE-IMPORT-001", "OPENC-FUNCTION-DIRECT-001"]
+    },
+    {
+      "id": "valid/fixed_array",
+      "source": "i32 main() {\n    i32[4] values = {1, 2, 3, 4};\n    return values[3];\n}\n",
+      "expected_result": "accept",
+      "rules": ["OPENC-ARRAY-DECL-001", "OPENC-ARRAY-INDEX-001"]
+    },
+    {
+      "id": "valid/function_add",
+      "source": "i32 add(i32 a, i32 b) {\n    return a + b;\n}\n\ni32 main() {\n    return add(10, 20);\n}\n",
+      "expected_result": "accept",
+      "rules": ["OPENC-FUNCTION-PARAM-001", "OPENC-CALL-TYPE-001"]
+    },
+    {
+      "id": "valid/struct_named_init",
+      "source": "struct Player {\n    i32 health;\n    i32 mana;\n}\n\ni32 main() {\n    Player player = Player{ health = 100, mana = 50 };\n    return player.health;\n}\n",
+      "expected_result": "accept",
+      "rules": ["OPENC-STRUCT-INIT-001"]
+    },
+    {
+      "id": "valid/struct_defaults",
+      "source": "struct Player {\n    i32 health = 100;\n    i32 mana = 50;\n}\n\ni32 main() {\n    Player player = Player{};\n    return player.health;\n}\n",
+      "expected_result": "accept",
+      "rules": ["OPENC-STRUCT-DEFAULT-001", "OPENC-STRUCT-EMPTY-001"]
+    },
+    {
+      "id": "valid/type_shapes_ref_ptr_optional_array_slice_storage",
+      "source": "struct P { i32 x; }\nvoid f(ref P a, ref const P b, ptr P c, optional P d, P[] e){ storage P s; }\n",
+      "expected_result": "accept",
+      "rules": [
+        "OPENC-PTR-TYPE-001",
+        "OPENC-OPTIONAL-EXPLICIT-001",
+        "OPENC-ARRAY-TYPE-001",
+        "OPENC-SLICE-TYPE-001",
+        "OPENC-STORAGE-TYPE-001",
+        "OPENC-TYPE-PREFIXORDER-001"
+      ]
+    },
+    {
+      "id": "valid/unsafe_pointer",
+      "source": "i32 main() {\n    i32 value = 10;\n    unsafe {\n        ptr i32 p = &value;\n        *p = 20;\n    }\n    return value;\n}\n",
+      "expected_result": "accept",
+      "rules": ["OPENC-UNSAFE-BOUNDARY-001", "OPENC-PTR-DEREF-001"]
+    },
+    {
+      "id": "valid/enum_switch",
+      "source": "enum Color { red, green, blue }\n\ni32 code(Color color) {\n    switch color {\n        case Color.red { return 1; }\n        case Color.green { return 2; }\n        case Color.blue { return 3; }\n    }\n}\n",
+      "expected_result": "accept",
+      "rules": ["OPENC-ENUM-DISTINCT-001", "OPENC-SWITCH-ENUM-001"]
+    },
+    {
+      "id": "valid/scope_value_capture",
+      "source": "import system.io;\nvoid show(i32 value) { io.print(value); }\ni32 main() {\n    i32 value = 1;\n    scope show(value);\n    value = 2;\n    return 0;\n}\n",
+      "expected_result": "accept",
+      "rules": ["OPENC-CLEANUP-VALUE-001"]
+    },
+    {
+      "id": "invalid/arrow_function",
+      "source": "func main() -> i32 {\n    return 0;\n}\n",
+      "expected_result": "reject",
+      "rules": ["OPENC-FUNCTION-DIRECT-001"],
+      "expected_rule": "OPENC-FUNCTION-DIRECT-001"
+    },
+    {
+      "id": "invalid/c_array_decl",
+      "source": "i32 main() {\n    i32 values[4];\n    return 0;\n}\n",
+      "expected_result": "reject",
+      "rules": ["OPENC-ARRAY-DECL-001"],
+      "expected_rule": "OPENC-ARRAY-DECL-001"
+    },
+    {
+      "id": "invalid/c_pointer_decl",
+      "source": "i32 main() {\n    i32* value;\n    return 0;\n}\n",
+      "expected_result": "reject",
+      "rules": ["OPENC-PTR-SYMBOL-001"],
+      "expected_rule": "OPENC-PTR-SYMBOL-001"
+    },
+    {
+      "id": "invalid/c_reference_decl",
+      "source": "struct Player { i32 health; }\nvoid use(Player& player) { }\n",
+      "expected_result": "reject",
+      "rules": ["OPENC-REF-SYMBOL-001"],
+      "expected_rule": "OPENC-REF-SYMBOL-001"
+    },
+    {
+      "id": "invalid/declaration_requires_type",
+      "source": "i32 main(){ value = 1; return value; }\n",
+      "expected_result": "reject",
+      "rules": ["OPENC-DECL-TYPEFIRST-001", "OPENC-DECL-ASSIGN-001", "OPENC-NAME-UNKNOWN-001"],
+      "expected_rule": "OPENC-DECL-TYPEFIRST-001"
+    },
+    {
+      "id": "invalid/missing_braces",
+      "source": "i32 main() {\n    bool ready = true;\n    if ready\n        return 1;\n    return 0;\n}\n",
+      "expected_result": "reject",
+      "rules": ["OPENC-BLOCK-BRACES-001"],
+      "expected_rule": "OPENC-BLOCK-BRACES-001"
+    },
+    {
+      "id": "invalid/missing_semicolon",
+      "source": "i32 main(){ i32 x=1 return x; }\n",
+      "expected_result": "reject",
+      "rules": ["OPENC-STMT-SEMICOLON-001"],
+      "expected_rule": "OPENC-STMT-SEMICOLON-001"
+    },
+    {
+      "id": "invalid/numeric_literal_suffix",
+      "source": "i32 main() {\n    u32 value = 10u32;\n    return cast(i32, value);\n}\n",
+      "expected_result": "reject",
+      "rules": ["OPENC-LITERAL-NOSUFFIX-001"],
+      "expected_rule": "OPENC-LITERAL-NOSUFFIX-001"
+    },
+    {
+      "id": "invalid/numeric_separator_doubled",
+      "source": "i32 main() {\n    i32 value = 1__000;\n    return value;\n}\n",
+      "expected_result": "reject",
+      "rules": ["OPENC-LITERAL-SEPARATOR-001"],
+      "expected_rule": "OPENC-LITERAL-SEPARATOR-001"
+    },
+    {
+      "id": "invalid/optional_question_syntax",
+      "source": "struct Player { i32 health; }\nPlayer? found;\n",
+      "expected_result": "reject",
+      "rules": ["OPENC-OPTIONAL-NOSHORTHAND-001"],
+      "expected_rule": "OPENC-OPTIONAL-NOSHORTHAND-001"
+    },
+    {
+      "id": "invalid/positional_struct",
+      "source": "struct Point { i32 x; i32 y; }\ni32 main() { Point p = Point{10, 20}; return p.x; }\n",
+      "expected_result": "reject",
+      "rules": ["OPENC-STRUCT-INIT-001"],
+      "expected_rule": "OPENC-STRUCT-INIT-001"
+    },
+    {
+      "id": "invalid/struct_trailing_semicolon",
+      "source": "struct Player { i32 health; };\n",
+      "expected_result": "reject",
+      "rules": ["OPENC-STRUCT-TRAILING-001"],
+      "expected_rule": "OPENC-STRUCT-TRAILING-001"
+    }
+  ]
+}
